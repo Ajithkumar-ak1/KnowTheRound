@@ -1,10 +1,8 @@
 package com.ajith.KnowTheRound.model;
 
-
 import com.ajith.KnowTheRound.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
