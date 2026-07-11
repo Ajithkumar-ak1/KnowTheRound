@@ -1,16 +1,13 @@
 package com.ajith.KnowTheRound.repository;
 
-import com.ajith.KnowTheRound.model.User;
+import com.ajith.KnowTheRound.model.JobRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface JobRoleRepository extends JpaRepository<JobRole, Long> {
 
-    Optional<User> findByEmail(String email);
-
-    boolean existsByEmail(String email);
-
+    Optional<JobRole> findByName(String name);
 }
