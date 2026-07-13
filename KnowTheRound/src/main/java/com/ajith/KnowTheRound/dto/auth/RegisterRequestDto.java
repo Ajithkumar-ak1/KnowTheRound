@@ -7,7 +7,10 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class LoginRequest {
+public class RegisterRequestDto {
+
+    @NotBlank
+    private String name;
 
     @Email
     @NotBlank

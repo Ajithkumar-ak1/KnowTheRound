@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 @Builder
 @AllArgsConstructor
-public class AuthResponse {
+public class AuthResponseDto {
 
     private String token;
     private String type;
