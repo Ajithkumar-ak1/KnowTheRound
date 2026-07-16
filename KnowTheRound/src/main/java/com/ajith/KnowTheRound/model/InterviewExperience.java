@@ -81,6 +81,9 @@ public class InterviewExperience {
     @Builder.Default
     private List<InterviewRound> interviewRounds = new ArrayList<>();
 
+    @OneToMany(mappedBy = "interviewExperience", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Bookmark> bookmarks = new ArrayList<>();
+
     @PreUpdate
     public void preUpdate() {
         updatedAt = LocalDateTime.now();

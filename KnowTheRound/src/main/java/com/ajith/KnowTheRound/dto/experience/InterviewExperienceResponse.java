@@ -39,4 +39,6 @@ public class InterviewExperienceResponse {
     private List<InterviewRoundResponse> interviewRounds;
 
     private LocalDateTime createdAt;
+
+    private boolean bookmarked;
 }

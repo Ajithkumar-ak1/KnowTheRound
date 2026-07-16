@@ -54,6 +54,9 @@ public class User implements UserDetails {
     @Builder.Default
     private List<InterviewExperience> interviewExperiences = new ArrayList<>();
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Bookmark> bookmarks = new ArrayList<>();
+
     @PreUpdate
     public void preUpdate() {
         updatedAt = LocalDateTime.now();

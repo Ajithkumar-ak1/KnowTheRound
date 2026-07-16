@@ -7,6 +7,7 @@ import com.ajith.KnowTheRound.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import com.ajith.KnowTheRound.mapper.InterviewExperienceMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +21,8 @@ public class InterviewExperienceService {
     private final TechnologyRepository technologyRepository;
     private final JobRoleRepository jobRoleRepository;
     private final UserRepository userRepository;
+    private final InterviewExperienceMapper interviewExperienceMapper;
+    private final BookmarkRepository bookmarkRepository;
 
     public InterviewExperienceResponse createInterviewExperience(CreateInterviewExperienceRequest request) {
 
@@ -83,14 +86,18 @@ public class InterviewExperienceService {
 
         InterviewExperience saved = interviewExperienceRepository.save(experience);
 
-        return mapToResponse(saved);
+        return interviewExperienceMapper.toResponse(saved, isBookmarked(saved));
     }
 
     public List<InterviewExperienceResponse> getAllInterviewExperiences() {
 
         return interviewExperienceRepository.findAll()
                 .stream()
-                .map(this::mapToResponse)
+                .map(experience ->
+                        interviewExperienceMapper.toResponse(
+                                experience,
+                                isBookmarked(experience)
+                        ))
                 .toList();
     }
 
@@ -100,58 +107,10 @@ public class InterviewExperienceService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Interview Experience not found"));
 
-        return mapToResponse(experience);
-    }
-
-    private InterviewExperienceResponse mapToResponse(InterviewExperience experience) {
-
-        List<String> technologyNames = experience.getTechnologies()
-                .stream()
-                .map(Technology::getName)
-                .toList();
-
-        UserResponseDto userDto = UserResponseDto.builder()
-                .id(experience.getUser().getId())
-                .name(experience.getUser().getName())
-                .profilePicture(experience.getUser().getProfilePicture())
-                .build();
-
-        List<InterviewRoundResponse> rounds = experience.getInterviewRounds()
-                .stream()
-                .map(this::mapRoundToResponse)
-                .toList();
-
-        return InterviewExperienceResponse.builder()
-                .id(experience.getId())
-                .title(experience.getTitle())
-                .overallExperience(experience.getOverallExperience())
-                .preparationStrategy(experience.getPreparationStrategy())
-                .difficulty(experience.getDifficulty())
-                .result(experience.getResult())
-                .cgpa(experience.getCgpa())
-                .yearsOfExperience(experience.getYearsOfExperience())
-                .packageOffered(experience.getPackageOffered())
-                .location(experience.getLocation())
-                .companyName(experience.getCompany().getName())
-                .jobRoleName(experience.getJobRole().getName())
-                .technologies(technologyNames)
-                .user(userDto)
-                .interviewRounds(rounds)
-                .createdAt(experience.getCreatedAt())
-                .build();
-    }
-
-    private InterviewRoundResponse mapRoundToResponse(InterviewRound round) {
-
-        return InterviewRoundResponse.builder()
-                .id(round.getId())
-                .roundNumber(round.getRoundNumber())
-                .roundName(round.getRoundName())
-                .difficulty(round.getDifficulty())
-                .questionsAsked(round.getQuestionsAsked())
-                .tips(round.getTips())
-                .result(round.getResult())
-                .build();
+        return interviewExperienceMapper.toResponse(
+                experience,
+                isBookmarked(experience)
+        );
     }
 
     private InterviewExperience getOwnedInterviewExperience(Long id) {
@@ -233,7 +192,10 @@ public class InterviewExperienceService {
         InterviewExperience saved =
                 interviewExperienceRepository.save(experience);
 
-        return mapToResponse(saved);
+        return interviewExperienceMapper.toResponse(
+                saved,
+                isBookmarked(saved)
+        );
     }
 
     public void deleteInterviewExperience(Long id) {
@@ -241,6 +203,19 @@ public class InterviewExperienceService {
         InterviewExperience experience = getOwnedInterviewExperience(id);
 
         interviewExperienceRepository.delete(experience);
+    }
+
+    private boolean isBookmarked(InterviewExperience experience) {
+
+        Object principal = SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getPrincipal();
+
+        if (!(principal instanceof User user)) {
+            return false;
+        }
+
+        return bookmarkRepository.existsByUserAndInterviewExperience(user, experience);
     }
 
 }
