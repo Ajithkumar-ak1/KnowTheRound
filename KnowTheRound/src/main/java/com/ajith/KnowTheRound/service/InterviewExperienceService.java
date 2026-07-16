@@ -4,10 +4,17 @@ import com.ajith.KnowTheRound.dto.experience.*;
 import com.ajith.KnowTheRound.exception.ResourceNotFoundException;
 import com.ajith.KnowTheRound.model.*;
 import com.ajith.KnowTheRound.repository.*;
+import com.ajith.KnowTheRound.enums.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import com.ajith.KnowTheRound.mapper.InterviewExperienceMapper;
+import com.ajith.KnowTheRound.specification.InterviewExperienceSpecification;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,11 +29,15 @@ public class InterviewExperienceService {
     private final JobRoleRepository jobRoleRepository;
     private final InterviewExperienceMapper interviewExperienceMapper;
 
-    private User getCurrentUser() {
+    public User getCurrentUser() {
 
-        Object principal = SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getPrincipal();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null) {
+            return null;
+        }
+
+        Object principal = authentication.getPrincipal();
 
         if (principal instanceof User user) {
             return user;
@@ -37,10 +48,7 @@ public class InterviewExperienceService {
 
     public InterviewExperienceResponse createInterviewExperience(CreateInterviewExperienceRequest request) {
 
-        User user = (User) SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getPrincipal();
+        User user = getCurrentUser();
 
         Company company = companyRepository.findById(request.getCompanyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found"));
@@ -119,14 +127,12 @@ public class InterviewExperienceService {
 
     private InterviewExperience getOwnedInterviewExperience(Long id) {
 
-        User user = (User) SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getPrincipal();
+        User user = getCurrentUser();
 
         InterviewExperience experience = interviewExperienceRepository.findById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Interview Experience not found"));
+
 
         if (!experience.getUser().getId().equals(user.getId())) {
             throw new RuntimeException("You are not authorized to modify this interview experience.");
@@ -196,10 +202,7 @@ public class InterviewExperienceService {
         InterviewExperience saved =
                 interviewExperienceRepository.save(experience);
 
-        User user = (User) SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getPrincipal();
+        User user = getCurrentUser();
 
         return interviewExperienceMapper.toResponse(saved, user);
     }
@@ -209,6 +212,57 @@ public class InterviewExperienceService {
         InterviewExperience experience = getOwnedInterviewExperience(id);
 
         interviewExperienceRepository.delete(experience);
+    }
+
+    public Page<InterviewExperienceResponse> getAllInterviewExperiences(
+            int page,
+            int size,
+            String sortBy,
+            String sortDir,
+            String company,
+            String jobRole,
+            List<String> technologies,
+            Difficulty difficulty,
+            InterviewResult result,
+            String location
+    ) {
+
+        Sort sort = sortDir.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Specification<InterviewExperience> specification =
+                Specification.where(InterviewExperienceSpecification.hasCompany(company))
+                        .and(InterviewExperienceSpecification.hasJobRole(jobRole))
+                        .and(InterviewExperienceSpecification.hasTechnologies(technologies))
+                        .and(InterviewExperienceSpecification.hasDifficulty(difficulty))
+                        .and(InterviewExperienceSpecification.hasResult(result))
+                        .and(InterviewExperienceSpecification.hasLocation(location));
+
+        Page<InterviewExperience> experiences =
+                interviewExperienceRepository.findAll(specification, pageable);
+
+        User currentUser = null;
+
+        Object principal = SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getPrincipal();
+
+        if (principal instanceof User) {
+            currentUser = (User) principal;
+        }
+
+        User finalCurrentUser = currentUser;
+
+        return experiences.map(experience ->
+                interviewExperienceMapper.toResponse(
+                        experience,
+                        finalCurrentUser
+                )
+        );
+
     }
 
 
