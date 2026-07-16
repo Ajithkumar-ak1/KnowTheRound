@@ -20,9 +20,20 @@ public class InterviewExperienceService {
     private final CompanyRepository companyRepository;
     private final TechnologyRepository technologyRepository;
     private final JobRoleRepository jobRoleRepository;
-    private final UserRepository userRepository;
     private final InterviewExperienceMapper interviewExperienceMapper;
-    private final BookmarkRepository bookmarkRepository;
+
+    private User getCurrentUser() {
+
+        Object principal = SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getPrincipal();
+
+        if (principal instanceof User user) {
+            return user;
+        }
+
+        return null;
+    }
 
     public InterviewExperienceResponse createInterviewExperience(CreateInterviewExperienceRequest request) {
 
@@ -86,18 +97,14 @@ public class InterviewExperienceService {
 
         InterviewExperience saved = interviewExperienceRepository.save(experience);
 
-        return interviewExperienceMapper.toResponse(saved, isBookmarked(saved));
+        return interviewExperienceMapper.toResponse(saved, getCurrentUser());
     }
 
     public List<InterviewExperienceResponse> getAllInterviewExperiences() {
 
         return interviewExperienceRepository.findAll()
                 .stream()
-                .map(experience ->
-                        interviewExperienceMapper.toResponse(
-                                experience,
-                                isBookmarked(experience)
-                        ))
+                .map(experience -> interviewExperienceMapper.toResponse(experience, getCurrentUser()))
                 .toList();
     }
 
@@ -107,10 +114,7 @@ public class InterviewExperienceService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Interview Experience not found"));
 
-        return interviewExperienceMapper.toResponse(
-                experience,
-                isBookmarked(experience)
-        );
+        return interviewExperienceMapper.toResponse(experience, getCurrentUser());
     }
 
     private InterviewExperience getOwnedInterviewExperience(Long id) {
@@ -192,10 +196,12 @@ public class InterviewExperienceService {
         InterviewExperience saved =
                 interviewExperienceRepository.save(experience);
 
-        return interviewExperienceMapper.toResponse(
-                saved,
-                isBookmarked(saved)
-        );
+        User user = (User) SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getPrincipal();
+
+        return interviewExperienceMapper.toResponse(saved, user);
     }
 
     public void deleteInterviewExperience(Long id) {
@@ -205,17 +211,5 @@ public class InterviewExperienceService {
         interviewExperienceRepository.delete(experience);
     }
 
-    private boolean isBookmarked(InterviewExperience experience) {
-
-        Object principal = SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getPrincipal();
-
-        if (!(principal instanceof User user)) {
-            return false;
-        }
-
-        return bookmarkRepository.existsByUserAndInterviewExperience(user, experience);
-    }
 
 }

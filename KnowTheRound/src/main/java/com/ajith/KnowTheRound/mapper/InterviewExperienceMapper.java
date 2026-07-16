@@ -6,16 +6,25 @@ import com.ajith.KnowTheRound.dto.experience.UserResponseDto;
 import com.ajith.KnowTheRound.model.InterviewExperience;
 import com.ajith.KnowTheRound.model.InterviewRound;
 import com.ajith.KnowTheRound.model.Technology;
+import com.ajith.KnowTheRound.model.User;
+import com.ajith.KnowTheRound.repository.BookmarkRepository;
+import com.ajith.KnowTheRound.repository.LikeRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
+@RequiredArgsConstructor
 public class InterviewExperienceMapper {
+
+    private final BookmarkRepository bookmarkRepository;
+    private final LikeRepository likeRepository;
 
     public InterviewExperienceResponse toResponse(
             InterviewExperience experience,
-            boolean bookmarked) {
+            User currentUser
+    ) {
 
         List<String> technologyNames = experience.getTechnologies()
                 .stream()
@@ -32,6 +41,23 @@ public class InterviewExperienceMapper {
                 .stream()
                 .map(this::mapRoundToResponse)
                 .toList();
+
+        boolean bookmarked = false;
+        boolean liked = false;
+
+        if (currentUser != null) {
+            bookmarked = bookmarkRepository.existsByUserAndInterviewExperience(
+                    currentUser,
+                    experience
+            );
+
+            liked = likeRepository.existsByUserAndInterviewExperience(
+                    currentUser,
+                    experience
+            );
+        }
+
+        Long likeCount = likeRepository.countByInterviewExperience(experience);
 
         return InterviewExperienceResponse.builder()
                 .id(experience.getId())
@@ -51,6 +77,8 @@ public class InterviewExperienceMapper {
                 .interviewRounds(rounds)
                 .createdAt(experience.getCreatedAt())
                 .bookmarked(bookmarked)
+                .liked(liked)
+                .likeCount(likeCount)
                 .build();
     }
 

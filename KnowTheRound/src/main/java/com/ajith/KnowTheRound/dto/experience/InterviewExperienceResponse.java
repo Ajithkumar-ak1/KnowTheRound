@@ -41,4 +41,8 @@ public class InterviewExperienceResponse {
     private LocalDateTime createdAt;
 
     private boolean bookmarked;
+
+    private boolean liked;
+
+    private Long likeCount;
 }
