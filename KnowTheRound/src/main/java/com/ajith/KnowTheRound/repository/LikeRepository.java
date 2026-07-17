@@ -28,4 +28,5 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
     List<Like> findByUser(User user);
 
     Long countByInterviewExperience(InterviewExperience interviewExperience);
+    long countByInterviewExperienceUser(User user);
 }

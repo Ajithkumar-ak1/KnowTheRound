@@ -12,4 +12,6 @@ public interface InterviewExperienceRepository
         JpaSpecificationExecutor<InterviewExperience> {
 
     List<InterviewExperience> findByUser(User user);
+
+    long countByUser(User user);
 }
