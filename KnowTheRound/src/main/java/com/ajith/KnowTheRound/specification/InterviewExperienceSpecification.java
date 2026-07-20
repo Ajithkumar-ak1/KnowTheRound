@@ -29,10 +29,6 @@ public class InterviewExperienceSpecification {
                 );
     }
 
-
-
-
-
     public static Specification<InterviewExperience> hasTechnologies(List<String> technologies) {
 
         return (root, query, cb) -> {
@@ -77,5 +73,17 @@ public class InterviewExperienceSpecification {
                         cb.lower(root.get("location")),
                         "%" + location.toLowerCase() + "%"
                 );
+    }
+
+    public static Specification<InterviewExperience> filterBy(
+            String company,
+            String jobRole,
+            List<String> technologies,
+            Difficulty difficulty
+    ) {
+        return Specification.where(hasCompany(company))
+                .and(hasJobRole(jobRole))
+                .and(hasTechnologies(technologies))
+                .and(hasDifficulty(difficulty));
     }
 }

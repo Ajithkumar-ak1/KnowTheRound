@@ -57,6 +57,11 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Bookmark> bookmarks = new ArrayList<>();
 
+    @Column(length = 255)
+    private String passwordResetToken;
+
+    private LocalDateTime passwordResetTokenExpiry;
+
     @PreUpdate
     public void preUpdate() {
         updatedAt = LocalDateTime.now();

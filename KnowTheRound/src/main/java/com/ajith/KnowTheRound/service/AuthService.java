@@ -1,12 +1,12 @@
 package com.ajith.KnowTheRound.service;
 
-import com.ajith.KnowTheRound.dto.auth.AuthResponseDto;
-import com.ajith.KnowTheRound.dto.auth.LoginRequestDto;
-import com.ajith.KnowTheRound.dto.auth.RegisterRequestDto;
+import com.ajith.KnowTheRound.dto.auth.*;
 import com.ajith.KnowTheRound.enums.Role;
 import com.ajith.KnowTheRound.exception.DuplicateResourceException;
 import com.ajith.KnowTheRound.exception.ResourceNotFoundException;
+import com.ajith.KnowTheRound.model.BlacklistedToken;
 import com.ajith.KnowTheRound.model.User;
+import com.ajith.KnowTheRound.repository.BlacklistedTokenRepository;
 import com.ajith.KnowTheRound.repository.UserRepository;
 import com.ajith.KnowTheRound.security.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +14,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +25,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final EmailService emailService;
+    private final BlacklistedTokenRepository blacklistedTokenRepository;
 
     public AuthResponseDto register(RegisterRequestDto request) {
 
@@ -74,5 +78,56 @@ public class AuthService {
                 .email(user.getEmail())
                 .role(user.getRole().name())
                 .build();
+    }
+
+    public void forgotPassword(ForgotPasswordRequest request) {
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
+
+        String token = UUID.randomUUID().toString();
+
+        user.setPasswordResetToken(token);
+        user.setPasswordResetTokenExpiry(LocalDateTime.now().plusMinutes(30));
+
+        userRepository.save(user);
+
+        emailService.sendPasswordResetEmail(user.getEmail(), token);
+    }
+
+    public void resetPassword(ResetPasswordRequest request) {
+
+        User user = userRepository.findByPasswordResetToken(request.getToken())
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid reset token"));
+
+        if (user.getPasswordResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Reset token has expired");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+
+        user.setPasswordResetToken(null);
+        user.setPasswordResetTokenExpiry(null);
+
+        userRepository.save(user);
+    }
+
+    public void logout(String authHeader) {
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Invalid Authorization header");
+        }
+
+        String token = authHeader.substring(7);
+
+        if (!blacklistedTokenRepository.existsByToken(token)) {
+
+            BlacklistedToken blacklistedToken = BlacklistedToken.builder()
+                    .token(token)
+                    .expiryDate(jwtService.extractExpiry(token))
+                    .build();
+
+            blacklistedTokenRepository.save(blacklistedToken);
+        }
     }
 }

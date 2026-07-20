@@ -1,6 +1,8 @@
 package com.ajith.KnowTheRound.controller;
 
 import com.ajith.KnowTheRound.dto.admin.AdminDashboardResponseDto;
+import com.ajith.KnowTheRound.dto.experience.InterviewExperienceResponse;
+import com.ajith.KnowTheRound.enums.Difficulty;
 import com.ajith.KnowTheRound.service.AdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +12,8 @@ import com.ajith.KnowTheRound.dto.admin.AdminUserResponseDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -34,5 +38,31 @@ public class AdminController {
     @GetMapping("/users/{id}")
     public ResponseEntity<AdminUserResponseDto> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(adminService.getUserById(id));
+    }
+
+    @GetMapping("/experiences")
+    public ResponseEntity<Page<InterviewExperienceResponse>> getAllExperiences(
+            @RequestParam(required = false) String company,
+            @RequestParam(required = false) String jobRole,
+            @RequestParam(required = false) List<String> technologies,
+            @RequestParam(required = false) Difficulty difficulty,
+            @PageableDefault(size = 10) Pageable pageable) {
+
+        return ResponseEntity.ok(
+                adminService.getAllExperiences(
+                        company,
+                        jobRole,
+                        technologies,
+                        difficulty,
+                        pageable
+                )
+        );
+    }
+
+    @DeleteMapping("/experiences/{id}")
+    public ResponseEntity<Void> deleteExperience(@PathVariable Long id) {
+
+        adminService.deleteExperience(id);
+        return ResponseEntity.noContent().build();
     }
 }

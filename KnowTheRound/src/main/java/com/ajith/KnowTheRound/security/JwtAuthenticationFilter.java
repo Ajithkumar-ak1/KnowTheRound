@@ -1,5 +1,6 @@
 package com.ajith.KnowTheRound.security;
 
+import com.ajith.KnowTheRound.repository.BlacklistedTokenRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,7 +21,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService customUserDetailsService;
-
+    private final BlacklistedTokenRepository blacklistedTokenRepository;
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -38,6 +39,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         jwt = authHeader.substring(7);
+
+        if (blacklistedTokenRepository.existsByToken(jwt)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("Token has been invalidated. Please log in again.");
+            return;
+        }
+
         email = jwtService.extractUsername(jwt);
 
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {

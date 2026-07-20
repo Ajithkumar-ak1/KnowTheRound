@@ -1,8 +1,6 @@
 package com.ajith.KnowTheRound.controller;
 
-import com.ajith.KnowTheRound.dto.auth.AuthResponseDto;
-import com.ajith.KnowTheRound.dto.auth.LoginRequestDto;
-import com.ajith.KnowTheRound.dto.auth.RegisterRequestDto;
+import com.ajith.KnowTheRound.dto.auth.*;
 import com.ajith.KnowTheRound.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,5 +29,30 @@ public class AuthController {
             @Valid @RequestBody LoginRequestDto request) {
 
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+
+        authService.forgotPassword(request);
+        return ResponseEntity.ok("Password reset link has been generated.");
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request) {
+
+        authService.resetPassword(request);
+        return ResponseEntity.ok("Password reset successfully.");
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(
+            @RequestHeader("Authorization") String authHeader) {
+
+        authService.logout(authHeader);
+
+        return ResponseEntity.ok("Logged out successfully.");
     }
 }
