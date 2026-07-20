@@ -62,6 +62,10 @@ public class User implements UserDetails {
 
     private LocalDateTime passwordResetTokenExpiry;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean enabled = false;
+
     @PreUpdate
     public void preUpdate() {
         updatedAt = LocalDateTime.now();
@@ -93,7 +97,5 @@ public class User implements UserDetails {
     }
 
     @Override
-    public boolean isEnabled() {
-        return true;
-    }
+    public boolean isEnabled() {return enabled;}
 }

@@ -2,6 +2,7 @@ package com.ajith.KnowTheRound.service;
 
 import com.ajith.KnowTheRound.model.User;
 import com.ajith.KnowTheRound.repository.BlacklistedTokenRepository;
+import com.ajith.KnowTheRound.repository.EmailVerificationTokenRepository;
 import com.ajith.KnowTheRound.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ public class CleanupService {
 
     private final BlacklistedTokenRepository blacklistedTokenRepository;
     private final UserRepository userRepository;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
 
     @Scheduled(cron = "0 0 * * * *") // Every hour
     public void cleanupExpiredData() {
@@ -38,5 +40,14 @@ public class CleanupService {
         userRepository.saveAll(users);
 
         log.info("Cleanup completed. Cleared {} expired reset tokens.", users.size());
+    }
+
+    @Scheduled(cron = "0 0 * * * *")
+    public void cleanupExpiredVerificationTokens() {
+
+        emailVerificationTokenRepository
+                .deleteByExpiryDateBefore(LocalDateTime.now());
+
+        System.out.println("Token cleanup executed: " + LocalDateTime.now());
     }
 }

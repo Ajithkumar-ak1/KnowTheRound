@@ -7,6 +7,8 @@ import com.ajith.KnowTheRound.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -19,14 +21,19 @@ public class RefreshTokenService {
     @Value("${jwt.refresh-expiration}")
     private long refreshExpiration;
 
+    @Transactional
     public RefreshToken createRefreshToken(User user) {
 
-        refreshTokenRepository.deleteByUser(user);
+        refreshTokenRepository.findByUser(user)
+                .ifPresent(refreshTokenRepository::delete);
+
+        refreshTokenRepository.flush();
 
         RefreshToken refreshToken = RefreshToken.builder()
-                .token(UUID.randomUUID().toString())
                 .user(user)
-                .expiryDate(LocalDateTime.now().plusSeconds(refreshExpiration / 1000))
+                .token(UUID.randomUUID().toString())
+                .expiryDate(LocalDateTime.now().plusDays(7))
+                .revoked(false)
                 .build();
 
         return refreshTokenRepository.save(refreshToken);
@@ -44,8 +51,7 @@ public class RefreshTokenService {
         return refreshToken;
     }
 
-
-
+    @Transactional
     public void deleteRefreshToken(User user) {
         refreshTokenRepository.deleteByUser(user);
     }

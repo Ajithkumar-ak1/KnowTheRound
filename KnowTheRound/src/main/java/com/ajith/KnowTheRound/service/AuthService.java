@@ -2,19 +2,24 @@ package com.ajith.KnowTheRound.service;
 
 import com.ajith.KnowTheRound.dto.auth.*;
 import com.ajith.KnowTheRound.enums.Role;
+import com.ajith.KnowTheRound.exception.BadRequestException;
 import com.ajith.KnowTheRound.exception.DuplicateResourceException;
 import com.ajith.KnowTheRound.exception.ResourceNotFoundException;
 import com.ajith.KnowTheRound.model.BlacklistedToken;
+import com.ajith.KnowTheRound.model.EmailVerificationToken;
 import com.ajith.KnowTheRound.model.RefreshToken;
 import com.ajith.KnowTheRound.model.User;
 import com.ajith.KnowTheRound.repository.BlacklistedTokenRepository;
+import com.ajith.KnowTheRound.repository.EmailVerificationTokenRepository;
 import com.ajith.KnowTheRound.repository.UserRepository;
 import com.ajith.KnowTheRound.security.JwtService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -29,6 +34,7 @@ public class AuthService {
     private final EmailService emailService;
     private final BlacklistedTokenRepository blacklistedTokenRepository;
     private final RefreshTokenService refreshTokenService;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
 
     public AuthResponseDto register(RegisterRequestDto request) {
 
@@ -41,27 +47,39 @@ public class AuthService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.USER)
+                .enabled(false)
                 .build();
 
         User savedUser = userRepository.save(user);
 
-        String accessToken = jwtService.generateToken(savedUser);
+        EmailVerificationToken verificationToken =
+                createVerificationToken(savedUser);
 
-        RefreshToken refreshToken =
-                refreshTokenService.createRefreshToken(savedUser);
+        emailService.sendVerificationEmail(
+                savedUser.getEmail(),
+                savedUser.getName(),
+                verificationToken.getToken()
+        );
 
         return AuthResponseDto.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken.getToken())
-                .type("Bearer")
                 .userId(savedUser.getId())
                 .name(savedUser.getName())
                 .email(savedUser.getEmail())
                 .role(savedUser.getRole().name())
+                .message("Registration successful. Please verify your email.")
                 .build();
     }
 
     public AuthResponseDto login(LoginRequestDto request) {
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (!user.isEnabled()) {
+            throw new BadRequestException(
+                    "Please verify your email before logging in."
+            );
+        }
 
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -69,10 +87,6 @@ public class AuthService {
                         request.getPassword()
                 )
         );
-
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found"));
 
         String accessToken = jwtService.generateToken(user);
 
@@ -148,6 +162,7 @@ public class AuthService {
         refreshTokenService.deleteRefreshToken(user);
     }
 
+    @Transactional
     public AuthResponseDto refreshToken(RefreshTokenRequest request) {
 
         RefreshToken oldRefreshToken =
@@ -172,5 +187,41 @@ public class AuthService {
                 .email(oldRefreshToken.getUser().getEmail())
                 .role(oldRefreshToken.getUser().getRole().name())
                 .build();
+    }
+
+    @Transactional
+    private EmailVerificationToken createVerificationToken(User user) {
+
+        emailVerificationTokenRepository.deleteByUser(user);
+
+        EmailVerificationToken verificationToken = EmailVerificationToken.builder()
+                .token(UUID.randomUUID().toString())
+                .user(user)
+                .expiryDate(LocalDateTime.now().plusHours(24))
+                .build();
+
+        return emailVerificationTokenRepository.save(verificationToken);
+    }
+
+    @Transactional
+    public void verifyEmail(String token) {
+
+        EmailVerificationToken verificationToken =
+                emailVerificationTokenRepository.findByToken(token)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException("Invalid verification token"));
+
+        if (verificationToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            emailVerificationTokenRepository.delete(verificationToken);
+            throw new BadRequestException("Verification token expired");
+        }
+
+        User user = verificationToken.getUser();
+
+        user.setEnabled(true);
+
+        userRepository.save(user);
+
+        emailVerificationTokenRepository.delete(verificationToken);
     }
 }

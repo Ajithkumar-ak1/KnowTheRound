@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.GetMapping;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -61,5 +63,17 @@ public class AuthController {
             @Valid @RequestBody RefreshTokenRequest request) {
 
         return ResponseEntity.ok(authService.refreshToken(request));
+    }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(
+            @RequestParam String token
+    ) {
+
+        authService.verifyEmail(token);
+
+        return ResponseEntity.ok(
+                "Email verified successfully. You can now login."
+        );
     }
 }

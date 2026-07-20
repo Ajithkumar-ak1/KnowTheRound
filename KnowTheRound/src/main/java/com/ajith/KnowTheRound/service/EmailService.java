@@ -34,4 +34,35 @@ public class EmailService {
 
         mailSender.send(message);
     }
+
+    public void sendVerificationEmail(String to, String name, String token) {
+
+        SimpleMailMessage message = new SimpleMailMessage();
+
+        message.setTo(to);
+        message.setSubject("Verify Your Email");
+
+        String verificationLink =
+                "http://localhost:8080/api/auth/verify-email?token=" + token;
+
+        message.setText("""
+            Hello %s,
+
+            Welcome to KnowTheRound!
+
+            Please verify your email by clicking the link below:
+
+            %s
+
+            This link will expire in 24 hours.
+
+            If you did not create this account, you can safely ignore this email.
+
+            Regards,
+            KnowTheRound Team
+            """.formatted(name, verificationLink));
+
+        mailSender.send(message);
+    }
+
 }
