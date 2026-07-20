@@ -55,4 +55,11 @@ public class AuthController {
 
         return ResponseEntity.ok("Logged out successfully.");
     }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<AuthResponseDto> refreshToken(
+            @Valid @RequestBody RefreshTokenRequest request) {
+
+        return ResponseEntity.ok(authService.refreshToken(request));
+    }
 }

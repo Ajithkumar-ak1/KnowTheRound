@@ -5,6 +5,7 @@ import com.ajith.KnowTheRound.enums.Role;
 import com.ajith.KnowTheRound.exception.DuplicateResourceException;
 import com.ajith.KnowTheRound.exception.ResourceNotFoundException;
 import com.ajith.KnowTheRound.model.BlacklistedToken;
+import com.ajith.KnowTheRound.model.RefreshToken;
 import com.ajith.KnowTheRound.model.User;
 import com.ajith.KnowTheRound.repository.BlacklistedTokenRepository;
 import com.ajith.KnowTheRound.repository.UserRepository;
@@ -27,6 +28,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
     private final BlacklistedTokenRepository blacklistedTokenRepository;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthResponseDto register(RegisterRequestDto request) {
 
@@ -43,10 +45,14 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
 
-        String token = jwtService.generateToken(savedUser);
+        String accessToken = jwtService.generateToken(savedUser);
+
+        RefreshToken refreshToken =
+                refreshTokenService.createRefreshToken(savedUser);
 
         return AuthResponseDto.builder()
-                .token(token)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken.getToken())
                 .type("Bearer")
                 .userId(savedUser.getId())
                 .name(savedUser.getName())
@@ -68,10 +74,14 @@ public class AuthService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("User not found"));
 
-        String token = jwtService.generateToken(user);
+        String accessToken = jwtService.generateToken(user);
+
+        RefreshToken refreshToken =
+                refreshTokenService.createRefreshToken(user);
 
         return AuthResponseDto.builder()
-                .token(token)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken.getToken())
                 .type("Bearer")
                 .userId(user.getId())
                 .name(user.getName())
@@ -129,5 +139,38 @@ public class AuthService {
 
             blacklistedTokenRepository.save(blacklistedToken);
         }
+
+        String email = jwtService.extractUsername(token);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        refreshTokenService.deleteRefreshToken(user);
+    }
+
+    public AuthResponseDto refreshToken(RefreshTokenRequest request) {
+
+        RefreshToken oldRefreshToken =
+                refreshTokenService.verifyRefreshToken(
+                        request.getRefreshToken()
+                );
+
+        RefreshToken newRefreshToken =
+                refreshTokenService.createRefreshToken(
+                        oldRefreshToken.getUser()
+                );
+
+        String accessToken =
+                jwtService.generateToken(oldRefreshToken.getUser());
+
+        return AuthResponseDto.builder()
+                .accessToken(accessToken)
+                .refreshToken(newRefreshToken.getToken())
+                .type("Bearer")
+                .userId(oldRefreshToken.getUser().getId())
+                .name(oldRefreshToken.getUser().getName())
+                .email(oldRefreshToken.getUser().getEmail())
+                .role(oldRefreshToken.getUser().getRole().name())
+                .build();
     }
 }
