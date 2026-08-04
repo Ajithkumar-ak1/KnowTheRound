@@ -20,15 +20,17 @@ public class UserController {
         return ResponseEntity.ok(userService.getMyProfile());
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<UserProfileResponseDto> getUserProfile(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.getUserProfile(id));
-    }
-
-    @PutMapping("/profile")
+    @PutMapping("/me/profile")
     public ResponseEntity<UserProfileResponseDto> updateProfile(
             @Valid @RequestBody UpdateProfileRequestDto request) {
 
         return ResponseEntity.ok(userService.updateProfile(request));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserProfileResponseDto> getUserProfile(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(userService.getUserProfile(id));
     }
 }

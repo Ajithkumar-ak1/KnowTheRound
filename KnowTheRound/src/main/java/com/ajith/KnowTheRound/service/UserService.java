@@ -3,12 +3,12 @@ package com.ajith.KnowTheRound.service;
 import com.ajith.KnowTheRound.dto.user.UpdateProfileRequestDto;
 import com.ajith.KnowTheRound.dto.user.UserProfileResponseDto;
 import com.ajith.KnowTheRound.exception.ResourceNotFoundException;
+import com.ajith.KnowTheRound.mapper.UserMapper;
 import com.ajith.KnowTheRound.model.InterviewExperience;
 import com.ajith.KnowTheRound.model.User;
 import com.ajith.KnowTheRound.repository.InterviewExperienceRepository;
 import com.ajith.KnowTheRound.repository.LikeRepository;
 import com.ajith.KnowTheRound.repository.UserRepository;
-import jakarta.persistence.Column;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -22,10 +22,10 @@ public class UserService {
     private final UserRepository userRepository;
     private final InterviewExperienceRepository interviewExperienceRepository;
     private final LikeRepository likeRepository;
-    @Column
-    private String profilePicture;
+    private final UserMapper userMapper;
 
     public UserProfileResponseDto getMyProfile() {
+
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         User user = userRepository.findByEmail(email)
@@ -52,15 +52,14 @@ public class UserService {
         user.setName(request.getName());
         user.setProfilePicture(request.getProfilePicture());
 
-        userRepository.save(user);
+        user = userRepository.save(user);
 
         return mapToProfile(user);
     }
 
     private UserProfileResponseDto mapToProfile(User user) {
 
-        List<InterviewExperience> experiences =
-                interviewExperienceRepository.findByUser(user);
+        List<InterviewExperience> experiences = interviewExperienceRepository.findByUser(user);
 
         List<String> technologies = experiences.stream()
                 .flatMap(exp -> exp.getTechnologies().stream())
@@ -73,16 +72,18 @@ public class UserService {
                 .distinct()
                 .toList();
 
-        return UserProfileResponseDto.builder()
-                .id(user.getId())
-                .name(user.getName())
-                .email(user.getEmail())
-                .profilePicture(user.getProfilePicture())
-                .joinedAt(user.getCreatedAt())
-                .totalExperiences(interviewExperienceRepository.countByUser(user))
-                .totalLikesReceived(likeRepository.countByInterviewExperienceUser(user))
-                .technologies(technologies)
-                .companies(companies)
-                .build();
+        UserProfileResponseDto dto = userMapper.toUserProfileResponseDto(user);
+
+        dto.setTotalExperiences(experiences.size());
+
+        dto.setTotalLikesReceived(
+                likeRepository.countByInterviewExperienceUser(user)
+        );
+
+        dto.setTechnologies(technologies);
+
+        dto.setCompanies(companies);
+
+        return dto;
     }
 }
