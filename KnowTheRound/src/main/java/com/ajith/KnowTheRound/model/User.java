@@ -64,6 +64,11 @@ public class User implements UserDetails {
 
     @Builder.Default
     @Column(nullable = false)
+    private boolean accountActive = true;
+
+
+    @Builder.Default
+    @Column(nullable = false)
     private boolean enabled = false;
 
     @PreUpdate
@@ -97,5 +102,7 @@ public class User implements UserDetails {
     }
 
     @Override
-    public boolean isEnabled() {return enabled;}
+    public boolean isEnabled() {
+        return enabled && accountActive;
+    }
 }

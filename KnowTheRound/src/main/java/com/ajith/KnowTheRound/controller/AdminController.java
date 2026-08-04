@@ -1,9 +1,13 @@
 package com.ajith.KnowTheRound.controller;
 
 import com.ajith.KnowTheRound.dto.admin.AdminDashboardResponseDto;
+import com.ajith.KnowTheRound.dto.admin.AdminUserStatusRequestDto;
 import com.ajith.KnowTheRound.dto.experience.InterviewExperienceResponse;
+import com.ajith.KnowTheRound.dto.experience.UserResponseDto;
+import com.ajith.KnowTheRound.dto.user.UserProfileResponseDto;
 import com.ajith.KnowTheRound.enums.Difficulty;
 import com.ajith.KnowTheRound.service.AdminService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -64,5 +68,24 @@ public class AdminController {
 
         adminService.deleteExperience(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/users/{userId}")
+    public ResponseEntity<String> deleteUser(@PathVariable Long userId) {
+
+        adminService.deleteUser(userId);
+
+        return ResponseEntity.ok("User deleted successfully.");
+    }
+
+    @PutMapping("/users/{userId}/status")
+    public ResponseEntity<UserProfileResponseDto> updateUserStatus(
+            @PathVariable Long userId,
+            @Valid @RequestBody AdminUserStatusRequestDto request
+    ) {
+
+        return ResponseEntity.ok(
+                adminService.updateUserStatus(userId, request)
+        );
     }
 }

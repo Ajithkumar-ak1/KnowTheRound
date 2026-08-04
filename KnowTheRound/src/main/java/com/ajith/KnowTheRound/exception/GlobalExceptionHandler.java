@@ -79,4 +79,19 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    @ExceptionHandler(AccountDisabledException.class)
+    public ResponseEntity<?> handleAccountDisabled(
+            AccountDisabledException ex
+    ) {
+
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(Map.of(
+                        "error", "Forbidden",
+                        "message", ex.getMessage(),
+                        "status", HttpStatus.FORBIDDEN.value(),
+                        "timestamp", LocalDateTime.now()
+                ));
+    }
 }

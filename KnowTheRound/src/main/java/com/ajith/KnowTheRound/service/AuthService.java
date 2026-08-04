@@ -2,6 +2,7 @@ package com.ajith.KnowTheRound.service;
 
 import com.ajith.KnowTheRound.dto.auth.*;
 import com.ajith.KnowTheRound.enums.Role;
+import com.ajith.KnowTheRound.exception.AccountDisabledException;
 import com.ajith.KnowTheRound.exception.BadRequestException;
 import com.ajith.KnowTheRound.exception.DuplicateResourceException;
 import com.ajith.KnowTheRound.exception.ResourceNotFoundException;
@@ -75,11 +76,14 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        if (!user.isEnabled()) {
-            throw new BadRequestException(
-                    "Please verify your email before logging in."
-            );
+        if (!user.isAccountActive()) {
+            throw new AccountDisabledException("Account is disabled");
         }
+
+        if (!user.isEnabled()) {
+            throw new RuntimeException("Please verify your email before logging in");
+        }
+
 
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(

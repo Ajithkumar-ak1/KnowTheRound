@@ -1,19 +1,17 @@
 package com.ajith.KnowTheRound.service;
 
 import com.ajith.KnowTheRound.dto.admin.AdminDashboardResponseDto;
+import com.ajith.KnowTheRound.dto.admin.AdminUserStatusRequestDto;
 import com.ajith.KnowTheRound.dto.experience.InterviewExperienceResponse;
+import com.ajith.KnowTheRound.dto.user.UserProfileResponseDto;
 import com.ajith.KnowTheRound.enums.Difficulty;
+import com.ajith.KnowTheRound.enums.Role;
+import com.ajith.KnowTheRound.exception.BadRequestException;
 import com.ajith.KnowTheRound.exception.ResourceNotFoundException;
 import com.ajith.KnowTheRound.mapper.InterviewExperienceMapper;
+import com.ajith.KnowTheRound.mapper.UserMapper;
 import com.ajith.KnowTheRound.model.InterviewExperience;
-import com.ajith.KnowTheRound.repository.BookmarkRepository;
-import com.ajith.KnowTheRound.repository.CompanyRepository;
-import com.ajith.KnowTheRound.repository.InterviewExperienceRepository;
-import com.ajith.KnowTheRound.repository.InterviewRoundRepository;
-import com.ajith.KnowTheRound.repository.JobRoleRepository;
-import com.ajith.KnowTheRound.repository.LikeRepository;
-import com.ajith.KnowTheRound.repository.TechnologyRepository;
-import com.ajith.KnowTheRound.repository.UserRepository;
+import com.ajith.KnowTheRound.repository.*;
 import com.ajith.KnowTheRound.specification.InterviewExperienceSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
@@ -22,6 +20,9 @@ import com.ajith.KnowTheRound.dto.admin.AdminUserResponseDto;
 import com.ajith.KnowTheRound.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 
@@ -38,6 +39,9 @@ public class AdminService {
     private final LikeRepository likeRepository;
     private final BookmarkRepository bookmarkRepository;
     private final InterviewExperienceMapper interviewExperienceMapper;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final UserMapper userMapper;
     public AdminDashboardResponseDto getDashboardStats() {
 
         return AdminDashboardResponseDto.builder()
@@ -104,5 +108,53 @@ public class AdminService {
                         new ResourceNotFoundException("Interview Experience not found"));
 
         interviewExperienceRepository.delete(experience);
+    }
+
+    @Transactional
+    public void deleteUser(Long userId) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found with ID: " + userId));
+
+        Authentication authentication = SecurityContextHolder
+                .getContext()
+                .getAuthentication();
+
+        User currentUser = (User) authentication.getPrincipal();
+
+        if (currentUser.getId().equals(userId)) {
+            throw new BadRequestException("You cannot delete your own account.");
+        }
+
+        likeRepository.deleteByUser(user);
+        refreshTokenRepository.deleteByUser(user);
+        emailVerificationTokenRepository.deleteByUser(user);
+
+        userRepository.delete(user);
+    }
+
+    public UserProfileResponseDto updateUserStatus(Long userId, AdminUserStatusRequestDto request){
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        String currentUserEmail = authentication.getName();
+
+        if (user.getEmail().equals(currentUserEmail) && !request.getEnabled()) {
+            throw new RuntimeException("You cannot disable your own account");
+        }
+
+        if (user.getRole().equals(Role.ADMIN) && !request.getEnabled()) {
+            throw new RuntimeException("Admin account cannot be disabled");
+        }
+
+        user.setAccountActive(request.getEnabled());
+
+        User updatedUser = userRepository.save(user);
+
+        return userMapper.toUserProfileResponseDto(updatedUser);
     }
 }
