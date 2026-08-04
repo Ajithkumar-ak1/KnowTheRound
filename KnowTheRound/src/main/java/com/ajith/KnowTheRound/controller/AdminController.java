@@ -32,12 +32,6 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getDashboardStats());
     }
 
-    @GetMapping("/users")
-    public ResponseEntity<Page<AdminUserResponseDto>> getAllUsers(
-            @PageableDefault(size = 10, sort = "createdAt") Pageable pageable) {
-
-        return ResponseEntity.ok(adminService.getAllUsers(pageable));
-    }
 
     @GetMapping("/users/{id}")
     public ResponseEntity<AdminUserResponseDto> getUserById(@PathVariable Long id) {
@@ -86,6 +80,26 @@ public class AdminController {
 
         return ResponseEntity.ok(
                 adminService.updateUserStatus(userId, request)
+        );
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<Page<AdminUserResponseDto>> getUsers(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction
+    ) {
+
+        return ResponseEntity.ok(
+                adminService.getUsers(
+                        search,
+                        page,
+                        size,
+                        sortBy,
+                        direction
+                )
         );
     }
 }

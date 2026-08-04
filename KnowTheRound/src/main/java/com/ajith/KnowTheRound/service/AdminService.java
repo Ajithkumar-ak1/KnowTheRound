@@ -13,7 +13,10 @@ import com.ajith.KnowTheRound.mapper.UserMapper;
 import com.ajith.KnowTheRound.model.InterviewExperience;
 import com.ajith.KnowTheRound.repository.*;
 import com.ajith.KnowTheRound.specification.InterviewExperienceSpecification;
+import com.ajith.KnowTheRound.specification.UserSpecification;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import com.ajith.KnowTheRound.dto.admin.AdminUserResponseDto;
@@ -156,5 +159,31 @@ public class AdminService {
         User updatedUser = userRepository.save(user);
 
         return userMapper.toUserProfileResponseDto(updatedUser);
+    }
+
+    public Page<AdminUserResponseDto> getUsers(
+            String search,
+            int page,
+            int size,
+            String sortBy,
+            String direction
+    ) {
+
+        Sort sort = direction.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        return userRepository
+                .findAll(UserSpecification.searchUsers(search), pageable)
+                .map(user -> AdminUserResponseDto.builder()
+                        .id(user.getId())
+                        .name(user.getName())
+                        .email(user.getEmail())
+                        .role(user.getRole())
+                        .createdAt(user.getCreatedAt())
+                        .build()
+                );
     }
 }
