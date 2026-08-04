@@ -38,7 +38,10 @@ public class AuthController {
             @Valid @RequestBody ForgotPasswordRequest request) {
 
         authService.forgotPassword(request);
-        return ResponseEntity.ok("Password reset link has been generated.");
+
+        return ResponseEntity.ok(
+                "If an account with that email exists, a password reset link has been sent."
+        );
     }
 
     @PostMapping("/reset-password")
@@ -46,6 +49,7 @@ public class AuthController {
             @Valid @RequestBody ResetPasswordRequest request) {
 
         authService.resetPassword(request);
+
         return ResponseEntity.ok("Password reset successfully.");
     }
 
@@ -76,4 +80,7 @@ public class AuthController {
                 "Email verified successfully. You can now login."
         );
     }
+
+
+
 }

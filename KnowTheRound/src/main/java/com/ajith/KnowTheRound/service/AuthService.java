@@ -5,12 +5,10 @@ import com.ajith.KnowTheRound.enums.Role;
 import com.ajith.KnowTheRound.exception.BadRequestException;
 import com.ajith.KnowTheRound.exception.DuplicateResourceException;
 import com.ajith.KnowTheRound.exception.ResourceNotFoundException;
-import com.ajith.KnowTheRound.model.BlacklistedToken;
-import com.ajith.KnowTheRound.model.EmailVerificationToken;
-import com.ajith.KnowTheRound.model.RefreshToken;
-import com.ajith.KnowTheRound.model.User;
+import com.ajith.KnowTheRound.model.*;
 import com.ajith.KnowTheRound.repository.BlacklistedTokenRepository;
 import com.ajith.KnowTheRound.repository.EmailVerificationTokenRepository;
+import com.ajith.KnowTheRound.repository.PasswordResetTokenRepository;
 import com.ajith.KnowTheRound.repository.UserRepository;
 import com.ajith.KnowTheRound.security.JwtService;
 
@@ -21,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -35,6 +34,7 @@ public class AuthService {
     private final BlacklistedTokenRepository blacklistedTokenRepository;
     private final RefreshTokenService refreshTokenService;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     public AuthResponseDto register(RegisterRequestDto request) {
 
@@ -104,36 +104,46 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
+        Optional<User> optionalUser = userRepository.findByEmail(request.getEmail());
 
-        String token = UUID.randomUUID().toString();
+        // Prevent email enumeration
+        if (optionalUser.isEmpty()) {
+            return;
+        }
 
-        user.setPasswordResetToken(token);
-        user.setPasswordResetTokenExpiry(LocalDateTime.now().plusMinutes(30));
+        User user = optionalUser.get();
 
-        userRepository.save(user);
+        PasswordResetToken resetToken = createPasswordResetToken(user);
 
-        emailService.sendPasswordResetEmail(user.getEmail(), token);
+        emailService.sendPasswordResetEmail(user.getEmail(), resetToken.getToken());
     }
 
+    @Transactional
     public void resetPassword(ResetPasswordRequest request) {
 
-        User user = userRepository.findByPasswordResetToken(request.getToken())
-                .orElseThrow(() -> new ResourceNotFoundException("Invalid reset token"));
+        PasswordResetToken resetToken =
+                passwordResetTokenRepository.findByToken(request.getToken())
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException("Invalid password reset token"));
 
-        if (user.getPasswordResetTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("Reset token has expired");
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            passwordResetTokenRepository.delete(resetToken);
+            throw new BadRequestException("Password reset token expired");
         }
+
+        User user = resetToken.getUser();
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
 
-        user.setPasswordResetToken(null);
-        user.setPasswordResetTokenExpiry(null);
-
         userRepository.save(user);
+
+        // Revoke all refresh tokens so existing sessions are logged out
+        refreshTokenService.deleteRefreshToken(user);
+
+        passwordResetTokenRepository.delete(resetToken);
     }
 
     public void logout(String authHeader) {
@@ -223,5 +233,19 @@ public class AuthService {
         userRepository.save(user);
 
         emailVerificationTokenRepository.delete(verificationToken);
+    }
+
+    @Transactional
+    private PasswordResetToken createPasswordResetToken(User user) {
+
+        passwordResetTokenRepository.deleteByUser(user);
+
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .token(UUID.randomUUID().toString())
+                .user(user)
+                .expiryDate(LocalDateTime.now().plusMinutes(15))
+                .build();
+
+        return passwordResetTokenRepository.save(resetToken);
     }
 }
