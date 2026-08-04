@@ -8,6 +8,8 @@ import com.ajith.KnowTheRound.model.Company;
 import com.ajith.KnowTheRound.repository.CompanyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 
 import java.util.List;
 
@@ -17,6 +19,7 @@ public class CompanyService {
 
     private final CompanyRepository companyRepository;
 
+    @CacheEvict(value = "companies", allEntries = true)
     public CompanyResponseDto createCompany(CompanyRequestDto request) {
 
         if (companyRepository.findByName(request.getName()).isPresent()) {
@@ -32,6 +35,7 @@ public class CompanyService {
         return mapToDto(companyRepository.save(company));
     }
 
+    @Cacheable(value = "companies")
     public List<CompanyResponseDto> getAllCompanies() {
         return companyRepository.findAll()
                 .stream()
@@ -47,6 +51,7 @@ public class CompanyService {
         return mapToDto(company);
     }
 
+    @CacheEvict(value = "companies", allEntries = true)
     public CompanyResponseDto updateCompany(Long id, CompanyRequestDto request) {
 
         Company company = companyRepository.findById(id)
@@ -66,6 +71,7 @@ public class CompanyService {
         return mapToDto(companyRepository.save(company));
     }
 
+    @CacheEvict(value = "companies", allEntries = true)
     public void deleteCompany(Long id) {
 
         Company company = companyRepository.findById(id)
