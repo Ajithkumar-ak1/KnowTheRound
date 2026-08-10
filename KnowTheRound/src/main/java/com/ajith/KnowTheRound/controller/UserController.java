@@ -15,12 +15,12 @@ public class UserController {
 
     private final UserService userService;
 
-    @GetMapping("/me")
+    @GetMapping("/profile")
     public ResponseEntity<UserProfileResponseDto> getMyProfile() {
         return ResponseEntity.ok(userService.getMyProfile());
     }
 
-    @PutMapping("/me/profile")
+    @PutMapping("/profile")
     public ResponseEntity<UserProfileResponseDto> updateProfile(
             @Valid @RequestBody UpdateProfileRequestDto request) {
 

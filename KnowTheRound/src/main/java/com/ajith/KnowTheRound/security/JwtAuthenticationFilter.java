@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import io.jsonwebtoken.ExpiredJwtException;
 
 import java.io.IOException;
 
@@ -22,6 +23,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final CustomUserDetailsService customUserDetailsService;
     private final BlacklistedTokenRepository blacklistedTokenRepository;
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -30,43 +32,56 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String email;
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        jwt = authHeader.substring(7);
+        String jwt = authHeader.substring(7);
 
-        if (blacklistedTokenRepository.existsByToken(jwt)) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Token has been invalidated. Please log in again.");
-            return;
-        }
+        try {
 
-        email = jwtService.extractUsername(jwt);
-
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
-            UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
-
-            if (jwtService.isTokenValid(jwt, userDetails)) {
-
-                UsernamePasswordAuthenticationToken authenticationToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
-                        );
-
-                authenticationToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
+            // Check blacklist
+            if (blacklistedTokenRepository.existsByToken(jwt)) {
+                response.sendError(
+                        HttpServletResponse.SC_UNAUTHORIZED,
+                        "Token has been invalidated. Please log in again."
                 );
-
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                return;
             }
+
+            String email = jwtService.extractUsername(jwt);
+
+            if (email != null &&
+                    SecurityContextHolder.getContext().getAuthentication() == null) {
+
+                UserDetails userDetails =
+                        customUserDetailsService.loadUserByUsername(email);
+
+                if (jwtService.isTokenValid(jwt, userDetails)) {
+
+                    UsernamePasswordAuthenticationToken authenticationToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
+
+                    authenticationToken.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request)
+                    );
+
+                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                }
+            }
+
+        } catch (ExpiredJwtException e) {
+            response.sendError(
+                    HttpServletResponse.SC_UNAUTHORIZED,
+                    "Access token has expired"
+            );
+            return;
         }
 
         filterChain.doFilter(request, response);

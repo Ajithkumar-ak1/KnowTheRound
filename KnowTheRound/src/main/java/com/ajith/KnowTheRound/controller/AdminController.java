@@ -4,11 +4,14 @@ import com.ajith.KnowTheRound.dto.admin.AdminDashboardResponseDto;
 import com.ajith.KnowTheRound.dto.admin.AdminUserStatusRequestDto;
 import com.ajith.KnowTheRound.dto.experience.InterviewExperienceResponse;
 import com.ajith.KnowTheRound.dto.experience.UserResponseDto;
+import com.ajith.KnowTheRound.dto.report.ReportResponseDto;
 import com.ajith.KnowTheRound.dto.user.UserProfileResponseDto;
 import com.ajith.KnowTheRound.enums.Difficulty;
 import com.ajith.KnowTheRound.service.AdminService;
+import com.ajith.KnowTheRound.service.ReportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +19,9 @@ import com.ajith.KnowTheRound.dto.admin.AdminUserResponseDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import com.ajith.KnowTheRound.dto.report.ReportResponseDto;
+import com.ajith.KnowTheRound.dto.report.UpdateReportStatusRequest;
+import com.ajith.KnowTheRound.enums.ReportStatus;
 
 import java.util.List;
 
@@ -26,6 +32,7 @@ import java.util.List;
 public class AdminController {
 
     private final AdminService adminService;
+    private final ReportService reportService;
 
     @GetMapping("/dashboard")
     public ResponseEntity<AdminDashboardResponseDto> getDashboard() {
@@ -102,4 +109,43 @@ public class AdminController {
                 )
         );
     }
+
+    @GetMapping("/reports")
+    public Page<ReportResponseDto> getAllReports(
+            @PageableDefault(size = 10) Pageable pageable) {
+
+        return reportService.getAllReports(pageable);
+    }
+
+    @GetMapping("/reports/{reportId}")
+    public ReportResponseDto getReportById(
+            @PathVariable Long reportId) {
+
+        return reportService.getReportById(reportId);
+    }
+
+    @GetMapping("/reports/status/{status}")
+    public Page<ReportResponseDto> getReportsByStatus(
+            @PathVariable ReportStatus status,
+            @PageableDefault(size = 10) Pageable pageable) {
+
+        return reportService.getReportsByStatus(status, pageable);
+    }
+
+    @PutMapping("/reports/{reportId}/status")
+    public ReportResponseDto updateReportStatus(
+            @PathVariable Long reportId,
+            @Valid @RequestBody UpdateReportStatusRequest request) {
+
+        return reportService.updateStatus(reportId, request);
+    }
+
+    @DeleteMapping("/reports/{reportId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteReport(
+            @PathVariable Long reportId) {
+
+        reportService.deleteReport(reportId);
+    }
+
 }
