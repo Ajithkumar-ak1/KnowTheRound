@@ -41,8 +41,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String jwt = authHeader.substring(7);
 
         try {
-
-            // Check blacklist
             if (blacklistedTokenRepository.existsByToken(jwt)) {
                 response.sendError(
                         HttpServletResponse.SC_UNAUTHORIZED,

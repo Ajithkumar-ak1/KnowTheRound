@@ -6,6 +6,7 @@ import com.ajith.KnowTheRound.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -14,6 +15,13 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+
+    @GetMapping("/me")
+    public ResponseEntity<UserProfileResponseDto> getMyProfile(
+            Authentication authentication) {
+
+        return ResponseEntity.ok(userService.getMyProfile());
+    }
 
     @GetMapping("/profile")
     public ResponseEntity<UserProfileResponseDto> getMyProfile() {

@@ -243,11 +243,12 @@ public class AuthService {
     private PasswordResetToken createPasswordResetToken(User user) {
 
         passwordResetTokenRepository.deleteByUser(user);
+        passwordResetTokenRepository.flush();
 
         PasswordResetToken resetToken = PasswordResetToken.builder()
                 .token(UUID.randomUUID().toString())
                 .user(user)
-                .expiryDate(LocalDateTime.now().plusMinutes(15))
+                .expiryDate(LocalDateTime.now().plusMinutes(30))
                 .build();
 
         return passwordResetTokenRepository.save(resetToken);

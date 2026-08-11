@@ -1,5 +1,6 @@
 package com.ajith.KnowTheRound.dto.user;
 
+import com.ajith.KnowTheRound.enums.Role;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -29,4 +30,6 @@ public class UserProfileResponseDto {
     private List<String> technologies;
 
     private List<String> companies;
+
+    private Role role;
 }

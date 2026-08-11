@@ -16,21 +16,29 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
 
         message.setTo(to);
-        message.setSubject("Password Reset Request");
+        message.setSubject("Reset Your KnowTheRound Password");
+
+        String resetLink =
+                "http://localhost:5173/reset-password?token=" + token;
 
         message.setText("""
-                Hello,
+            Hello,
 
-                You requested a password reset.
+            We received a request to reset your KnowTheRound account password.
 
-                Use the following token to reset your password:
+            Click the link below to reset your password:
 
-                %s
+            %s
 
-                This token is valid for 30 minutes.
+            This password reset link is valid for 30 minutes.
 
-                If you did not request this, please ignore this email.
-                """.formatted(token));
+            If you did not request a password reset, you can safely ignore this email.
+
+            For security reasons, please do not share this link with anyone.
+
+            Regards,
+            KnowTheRound Team
+            """.formatted(resetLink));
 
         mailSender.send(message);
     }
