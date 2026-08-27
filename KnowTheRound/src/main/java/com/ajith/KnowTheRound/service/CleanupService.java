@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,6 +23,7 @@ public class CleanupService {
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
 
     @Scheduled(cron = "0 0 * * * *") // Every hour
+    @Transactional
     public void cleanupExpiredData() {
 
         LocalDateTime now = LocalDateTime.now();
@@ -43,11 +45,12 @@ public class CleanupService {
     }
 
     @Scheduled(cron = "0 0 * * * *")
+    @Transactional
     public void cleanupExpiredVerificationTokens() {
 
         emailVerificationTokenRepository
                 .deleteByExpiryDateBefore(LocalDateTime.now());
 
-        System.out.println("Token cleanup executed: " + LocalDateTime.now());
+        log.info("Expired email verification token cleanup completed.");
     }
 }
