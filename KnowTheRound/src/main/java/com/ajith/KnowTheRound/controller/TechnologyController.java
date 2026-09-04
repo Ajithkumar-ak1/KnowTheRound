@@ -30,7 +30,6 @@ public class TechnologyController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TechnologyResponseDto> createTechnology(
             @Valid @RequestBody TechnologyRequestDto request) {
 
