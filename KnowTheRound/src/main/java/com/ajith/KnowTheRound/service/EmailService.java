@@ -1,76 +1,154 @@
 package com.ajith.KnowTheRound.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class EmailService {
 
-    private final JavaMailSender mailSender;
+    @Value("${brevo.api-key}")
+    private String brevoApiKey;
+
+    @Value("${brevo.sender-email}")
+    private String senderEmail;
+
+    @Value("${brevo.sender-name}")
+    private String senderName;
+
+    private final RestClient restClient = RestClient.builder()
+            .baseUrl("https://api.brevo.com/v3")
+            .build();
 
     public void sendPasswordResetEmail(String to, String token) {
 
-        SimpleMailMessage message = new SimpleMailMessage();
-
-        message.setTo(to);
-        message.setSubject("Reset Your KnowTheRound Password");
-
         String resetLink =
-                "http://localhost:5173/reset-password?token=" + token;
+                "https://knowtheround.vercel.app/reset-password?token=" + token;
 
-        message.setText("""
-            Hello,
+        String htmlContent = """
+                <html>
+                <body>
+                    <h2>Reset Your KnowTheRound Password</h2>
 
-            We received a request to reset your KnowTheRound account password.
+                    <p>Hello,</p>
 
-            Click the link below to reset your password:
+                    <p>
+                        We received a request to reset your KnowTheRound
+                        account password.
+                    </p>
 
-            %s
+                    <p>
+                        <a href="%s">
+                            Click here to reset your password
+                        </a>
+                    </p>
 
-            This password reset link is valid for 30 minutes.
+                    <p>This link is valid for 30 minutes.</p>
 
-            If you did not request a password reset, you can safely ignore this email.
+                    <p>
+                        If you did not request a password reset,
+                        you can safely ignore this email.
+                    </p>
 
-            For security reasons, please do not share this link with anyone.
+                    <p>
+                        Regards,<br>
+                        KnowTheRound Team
+                    </p>
+                </body>
+                </html>
+                """.formatted(resetLink);
 
-            Regards,
-            KnowTheRound Team
-            """.formatted(resetLink));
-
-        mailSender.send(message);
+        sendEmail(
+                to,
+                null,
+                "Reset Your KnowTheRound Password",
+                htmlContent
+        );
     }
 
     public void sendVerificationEmail(String to, String name, String token) {
 
-        SimpleMailMessage message = new SimpleMailMessage();
-
-        message.setTo(to);
-        message.setSubject("Verify Your Email");
-
         String verificationLink =
-                "http://localhost:8080/api/auth/verify-email?token=" + token;
+                "https://knowtheround-e767.onrender.com/api/auth/verify-email?token=" + token;
 
-        message.setText("""
-            Hello %s,
+        String htmlContent = """
+                <html>
+                <body>
+                    <h2>Welcome to KnowTheRound!</h2>
 
-            Welcome to KnowTheRound!
+                    <p>Hello %s,</p>
 
-            Please verify your email by clicking the link below:
+                    <p>
+                        Thank you for registering with KnowTheRound.
+                    </p>
 
-            %s
+                    <p>
+                        <a href="%s">
+                            Click here to verify your email
+                        </a>
+                    </p>
 
-            This link will expire in 24 hours.
+                    <p>This link will expire in 24 hours.</p>
 
-            If you did not create this account, you can safely ignore this email.
+                    <p>
+                        If you did not create this account,
+                        you can safely ignore this email.
+                    </p>
 
-            Regards,
-            KnowTheRound Team
-            """.formatted(name, verificationLink));
+                    <p>
+                        Regards,<br>
+                        KnowTheRound Team
+                    </p>
+                </body>
+                </html>
+                """.formatted(name, verificationLink);
 
-        mailSender.send(message);
+        sendEmail(
+                to,
+                name,
+                "Verify Your KnowTheRound Email",
+                htmlContent
+        );
     }
 
+    private void sendEmail(
+            String to,
+            String recipientName,
+            String subject,
+            String htmlContent
+    ) {
+
+        Map<String, Object> body = Map.of(
+                "sender", Map.of(
+                        "name", senderName,
+                        "email", senderEmail
+                ),
+                "to", List.of(
+                        recipientName == null
+                                ? Map.of("email", to)
+                                : Map.of(
+                                "email", to,
+                                "name", recipientName
+                        )
+                ),
+                "subject", subject,
+                "htmlContent", htmlContent
+        );
+
+        restClient.post()
+                .uri("/smtp/email")
+                .header("api-key", brevoApiKey)
+                .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .toBodilessEntity();
+    }
 }
