@@ -190,41 +190,6 @@ public class AuthService {
                 .build();
     }
 
-    @Transactional
-    private EmailVerificationToken createVerificationToken(User user) {
-
-        emailVerificationTokenRepository.deleteByUser(user);
-
-        EmailVerificationToken verificationToken = EmailVerificationToken.builder()
-                .token(UUID.randomUUID().toString())
-                .user(user)
-                .expiryDate(LocalDateTime.now().plusHours(24))
-                .build();
-
-        return emailVerificationTokenRepository.save(verificationToken);
-    }
-
-    @Transactional
-    public void verifyEmail(String token) {
-
-        EmailVerificationToken verificationToken =
-                emailVerificationTokenRepository.findByToken(token)
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException("Invalid verification token"));
-
-        if (verificationToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            emailVerificationTokenRepository.delete(verificationToken);
-            throw new BadRequestException("Verification token expired");
-        }
-
-        User user = verificationToken.getUser();
-
-        user.setEnabled(true);
-
-        userRepository.save(user);
-
-        emailVerificationTokenRepository.delete(verificationToken);
-    }
 
     @Transactional
     private PasswordResetToken createPasswordResetToken(User user) {
