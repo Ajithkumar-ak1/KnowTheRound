@@ -30,7 +30,6 @@ public class JobRoleController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<JobRoleResponseDto> createJobRole(
             @Valid @RequestBody JobRoleRequestDto request) {
 
