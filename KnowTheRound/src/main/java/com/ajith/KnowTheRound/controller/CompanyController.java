@@ -30,7 +30,6 @@ public class CompanyController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CompanyResponseDto> createCompany(
             @Valid @RequestBody CompanyRequestDto request) {
 
