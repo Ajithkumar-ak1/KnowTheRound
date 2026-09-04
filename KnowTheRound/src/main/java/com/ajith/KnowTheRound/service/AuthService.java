@@ -8,7 +8,6 @@ import com.ajith.KnowTheRound.exception.DuplicateResourceException;
 import com.ajith.KnowTheRound.exception.ResourceNotFoundException;
 import com.ajith.KnowTheRound.model.*;
 import com.ajith.KnowTheRound.repository.BlacklistedTokenRepository;
-import com.ajith.KnowTheRound.repository.EmailVerificationTokenRepository;
 import com.ajith.KnowTheRound.repository.PasswordResetTokenRepository;
 import com.ajith.KnowTheRound.repository.UserRepository;
 import com.ajith.KnowTheRound.security.JwtService;
@@ -34,7 +33,6 @@ public class AuthService {
     private final EmailService emailService;
     private final BlacklistedTokenRepository blacklistedTokenRepository;
     private final RefreshTokenService refreshTokenService;
-    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     public AuthResponseDto register(RegisterRequestDto request) {
@@ -48,19 +46,11 @@ public class AuthService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.USER)
-                .enabled(false)
+                .enabled(true)
                 .build();
 
         User savedUser = userRepository.save(user);
 
-        EmailVerificationToken verificationToken =
-                createVerificationToken(savedUser);
-
-        emailService.sendVerificationEmail(
-                savedUser.getEmail(),
-                savedUser.getName(),
-                verificationToken.getToken()
-        );
 
         return AuthResponseDto.builder()
                 .userId(savedUser.getId())
@@ -80,9 +70,6 @@ public class AuthService {
             throw new AccountDisabledException("Account is disabled");
         }
 
-        if (!user.isEnabled()) {
-            throw new RuntimeException("Please verify your email before logging in");
-        }
 
 
         authenticationManager.authenticate(
